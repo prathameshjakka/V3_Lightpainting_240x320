@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "..\\..\\..\\Arduino\\lvgl tft eSPI ili9341 testing"
 		}
 	],
 	"settings": {}
