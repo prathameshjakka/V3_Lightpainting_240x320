@@ -492,7 +492,7 @@ void setup()
 
   lv_obj_t *tab1 = lv_tabview_add_tab(tabview, "File");
   lv_obj_t *tab2 = lv_tabview_add_tab(tabview, "Settings");
-  lv_obj_t *tab3 = lv_tabview_add_tab(tabview, "BOI");
+  lv_obj_t *tab3 = lv_tabview_add_tab(tabview, "ABCD");
 
   /*lv_obj_t * img1 = lv_img_create(tab3, NULL);
     lv_img_set_src(img1, &img_cogwheel_argb);
