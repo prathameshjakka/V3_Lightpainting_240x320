@@ -51,12 +51,13 @@ void set_black();
 lv_obj_t *list_btn;
 lv_obj_t *list1;
 static lv_obj_t *brightness_label, *speed_label, *delay_label;
+lv_obj_t *slider, *slider2, *slider3;
 lv_obj_t *label5;
 
 lv_indev_t *indev_keypad;
 lv_group_t *group;
 
-PCF8574 pcf8574(0x20);
+PCF8574 pcf8574(0x38);
 
 #if USE_LV_LOG != 0
 /* Serial debugging */
@@ -103,13 +104,15 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
     //delay(g_dynParam_delay * 1000);
 
     FastLED.setBrightness(20);
+    Serial.print(".......");
+    Serial.println(FastLED.getBrightness());
     //Serial.print("BMP Brightness : ");
     //Serial.println(g_dynParam_brightness);
     //camera_trigger();
 
 
-    //bmpDraw(buff);
     bmpDraw(buff);
+    //bmpDraw(buff);
     Serial.println("Print_Success");
     Serial.println(buff);
     //Serial.print("bmpDraw dynparam ");
@@ -317,7 +320,7 @@ void bmpDraw(char *filename)
                         leds[x] = povbuffer[x];
                     }
                     FastLED.show();
-                    delay_image_scroll = 10 ;
+                    delay_image_scroll = 5 ;
                     //Serial.print (delay_image_scroll);
                     delay(delay_image_scroll); // change the delay time depending effect required
                 }                              // end scanline
@@ -401,8 +404,8 @@ void setup()
 {
 
   Serial.begin(115200); /* prepare for possible serial debug */
-
-  //digitalWrite(27, HIGH); // TFT screen chip select
+  //pinMode(17,OUTPUT);
+  //digitalWrite(17, HIGH); // TFT screen chip select
   //digitalWrite( 5, HIGH); // SD card chips select, must use GPIO 5 (ESP32 SS)
 
   if (!SD.begin(5))
@@ -594,6 +597,8 @@ void setup()
   lv_group_add_obj(group, sw1);
   //lv_group_add_obj(group, sw2);
   lv_group_add_obj(group, list1);
+
+  
 }
 
 void loop()
