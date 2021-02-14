@@ -1,17 +1,6 @@
 #include<main.h>
 
 
-File bmpFile;
-File root;
-String m_CurrentFilename = "";
-String m_CurrentFoldername = "";
-int m_FileIndex = 0;
-int m_FolderIndex = 0;
-int m_NumberOfFiles = 0;
-int m_NumberOfFolder = 0;
-String m_FileNames[300];
-String m_FolderName[300];
-
 int bmpWidth, bmpHeight;
 
 uint8_t bmpDepth, bmpImageoffset;
