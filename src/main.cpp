@@ -37,7 +37,9 @@ lv_obj_t *label5;
 lv_indev_t *indev_keypad;
 lv_group_t *group;
 
-PCF8574 pcf8574(0x38);
+//PCF8574 pcf8574(0x38);
+
+PCF8574 pcf8574(0x20);
 
 #if USE_LV_LOG != 0
 /* Serial debugging */
@@ -586,9 +588,9 @@ void setup()
 void loop()
 {
   loopOTA();
-
+  delay(10);
   lv_task_handler(); /* let the GUI do its work */
-  delay(5);
+  delay(10);
   //uint8_t val = pcf8574.digitalRead(P1);
   //if (val==LOW) Serial.println("YOLO");
   //delay(200);
