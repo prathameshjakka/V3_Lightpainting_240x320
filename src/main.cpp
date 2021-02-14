@@ -593,7 +593,7 @@ void setup()
   lv_group_add_obj(group, list1);
 
   
-}
+} 
 
 void loop()
 {
