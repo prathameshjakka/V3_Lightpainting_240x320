@@ -1,12 +1,4 @@
-#include <Arduino.h>
-
-#include <lvgl.h>
-#include <TFT_eSPI.h>
-#include "FS.h"
-#include "SPI.h"
-#include "SD.h"
-#include "PCF8574.h"
-#include "FastLED.h"
+#include<main.h>
 
 
 File bmpFile;
@@ -408,6 +400,8 @@ void setup()
   //digitalWrite(17, HIGH); // TFT screen chip select
   //digitalWrite( 5, HIGH); // SD card chips select, must use GPIO 5 (ESP32 SS)
 
+  initOTA();
+
   if (!SD.begin(5))
   {
     Serial.println("initialization failed!");
@@ -492,7 +486,7 @@ void setup()
 
   lv_obj_t *tab1 = lv_tabview_add_tab(tabview, "File");
   lv_obj_t *tab2 = lv_tabview_add_tab(tabview, "Settings");
-  lv_obj_t *tab3 = lv_tabview_add_tab(tabview, "ABCD");
+  lv_obj_t *tab3 = lv_tabview_add_tab(tabview, "BOI");
 
   /*lv_obj_t * img1 = lv_img_create(tab3, NULL);
     lv_img_set_src(img1, &img_cogwheel_argb);
@@ -603,6 +597,7 @@ void setup()
 
 void loop()
 {
+  loopOTA();
 
   lv_task_handler(); /* let the GUI do its work */
   delay(5);

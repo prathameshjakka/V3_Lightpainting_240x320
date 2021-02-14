@@ -3,3 +3,8 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+src/main.h
+src/ESP32-OTA.h
+src/ESP32-OTA.cpp
+src/main.cpp
+platformio.ini
