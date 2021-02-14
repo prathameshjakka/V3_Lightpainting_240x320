@@ -1,9 +1,8 @@
 #include<main.h>
 
+uint8_t bmpDepth, bmpImageoffset;
 
 int bmpWidth, bmpHeight;
-
-uint8_t bmpDepth, bmpImageoffset;
 
 #define BUFFPIXEL 432 // Number of Led times 3
 
