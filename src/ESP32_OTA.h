@@ -6,8 +6,8 @@
 
 //wifi init
 #ifndef STASSID
-#define STASSID "PathakWiFi"
-#define STAPSK  "224262822"
+#define STASSID "xxxxxxxxx"
+#define STAPSK  "xxxxxxxxxx"
 #endif
 
 
