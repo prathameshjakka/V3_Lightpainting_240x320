@@ -17,6 +17,8 @@ CRGB leds[NUM_LEDS];
 
 int BRIGHTNESS = 20;
 
+void drawBmp(const char *filename, int16_t x, int16_t y);
+
 TFT_eSPI tft = TFT_eSPI(); /* TFT instance */
 static lv_disp_buf_t disp_buf;
 static lv_color_t buf[LV_HOR_RES_MAX * 10];
@@ -34,12 +36,16 @@ static lv_obj_t *brightness_label, *speed_label, *delay_label;
 lv_obj_t *slider, *slider2, *slider3;
 lv_obj_t *label5;
 
+lv_obj_t *tab1, *tab2, *tab3;
+
+static lv_obj_t * kb;
+static lv_obj_t * ta;
+
 lv_indev_t *indev_keypad;
 lv_group_t *group;
 
-//PCF8574 pcf8574(0x38);
-
-PCF8574 pcf8574(0x20);
+PCF8574 pcf8574(0x38);
+//PCF8574 pcf8574(0x20);
 
 #if USE_LV_LOG != 0
 /* Serial debugging */
@@ -72,6 +78,33 @@ uint32_t read32(File &f)
     return result;
 }
 
+static void kb_event_cb(lv_obj_t * keyboard, lv_event_t e)
+{
+    lv_keyboard_def_event_cb(kb, e);
+    if(e == LV_EVENT_CANCEL) {
+        lv_keyboard_set_textarea(kb, NULL);
+        lv_obj_del(kb);
+        kb = NULL;
+    }
+}
+
+static void kb_create(void)
+{
+    kb = lv_keyboard_create(tab3, NULL);
+    lv_obj_set_size(kb,200,100);
+    lv_obj_align(kb,ta,LV_ALIGN_OUT_BOTTOM_MID,0,0);
+    lv_keyboard_set_cursor_manage(kb, true);
+    lv_obj_set_event_cb(kb, kb_event_cb);
+    lv_keyboard_set_textarea(kb, ta);
+
+}
+
+static void ta_event_cb(lv_obj_t * ta_local, lv_event_t e)
+{
+    if(e == LV_EVENT_CLICKED && kb == NULL) {
+        kb_create();
+    }
+}
 
 static void event_handler(lv_obj_t *obj, lv_event_t event)
 {
@@ -93,8 +126,37 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
     //camera_trigger();
 
 
-    bmpDraw(buff);
     //bmpDraw(buff);
+    
+    drawBmp(buff, 48, 50);
+    //bmpDraw(buff);
+    Serial.println("Print_Success");
+    Serial.println(buff);
+    //Serial.print("bmpDraw dynparam ");
+    //Serial.println(g_dynParam_speed);
+  }
+  if (event == LV_EVENT_LONG_PRESSED)
+  {
+    printf("Clicked: %s\n", lv_list_get_btn_text(obj));
+    //printDirectory(lv_list_get_btn_text(obj),0);
+    char buff[20];
+    String StringF = lv_list_get_btn_text(obj);
+    StringF.toCharArray(buff, 20);
+
+    //delay(g_dynParam_delay * 1000);
+
+    FastLED.setBrightness(20);
+    Serial.print(".......");
+    Serial.println(FastLED.getBrightness());
+    //Serial.print("BMP Brightness : ");
+    //Serial.println(g_dynParam_brightness);
+    //camera_trigger();
+
+
+    //bmpDraw(buff);
+    
+    //drawBmp(buff, 48, 50);
+    bmpDraw(buff);
     Serial.println("Print_Success");
     Serial.println(buff);
     //Serial.print("bmpDraw dynparam ");
@@ -191,6 +253,79 @@ static void event_cb_direction(lv_obj_t *obj, lv_event_t event)
       lv_label_set_text(label5, "LEFT");
     }
   }
+}
+
+
+void drawBmp(const char *filename, int16_t x, int16_t y)
+{
+
+    if ((x >= tft.width()) || (y >= tft.height()))
+        return;
+
+    File bmpFS;
+
+    // Open requested file on SD card
+    bmpFS = SD.open(filename);
+
+    if (!bmpFS)
+    {
+        Serial.print("File not found");
+        return;
+    }
+
+    uint32_t seekOffset;
+    uint16_t w, h, row, col;
+    uint8_t r, g, b;
+
+    uint32_t startTime = millis();
+
+    if (read16(bmpFS) == 0x4D42)
+    {
+        read32(bmpFS);
+        read32(bmpFS);
+        seekOffset = read32(bmpFS);
+        read32(bmpFS);
+        w = read32(bmpFS);
+        h = read32(bmpFS);
+
+        if ((read16(bmpFS) == 1) && (read16(bmpFS) == 24) && (read32(bmpFS) == 0))
+        {
+            y += h - 1;
+
+            tft.setSwapBytes(true);
+            bmpFS.seek(seekOffset);
+
+            uint16_t padding = (4 - ((w * 3) & 3)) & 3;
+            uint8_t lineBuffer[w * 3];
+
+            for (row = 0; row < h; row++)
+            {
+                bmpFS.read(lineBuffer, sizeof(lineBuffer));
+                uint8_t *bptr = lineBuffer;
+                uint16_t *tptr = (uint16_t *)lineBuffer;
+                // Convert 24 to 16 bit colours
+                for (uint16_t col = 0; col < w; col++)
+                {
+                    b = *bptr++;
+                    g = *bptr++;
+                    r = *bptr++;
+                    *tptr++ = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+                }
+                // Read any line padding
+                if (padding)
+                    bmpFS.read((uint8_t *)tptr, padding);
+                // Push the pixel row to screen, pushImage will crop the line if needed
+                tft.pushImage(x, y--, w, 1, (uint16_t *)lineBuffer);
+                //Serial.println(y);
+            }
+            Serial.print("Loaded in ");
+            Serial.print(millis() - startTime);
+            Serial.println(" ms");
+        }
+        else
+            Serial.println("BMP format not recognized.");
+    }
+    bmpFS.close();
 }
 
 //////////////////Function to read BMP and send to Led strip a row at a time/////////////////////
@@ -367,8 +502,8 @@ void print_Directory(File dir, int numTabs)
     {
       Serial.println("/");
       printDirectory(entry, numTabs + 1);
-      list_btn = lv_list_add_btn(list1, LV_SYMBOL_DIRECTORY, entry.name());
-      lv_obj_set_event_cb(list_btn, event_handler);
+      //list_btn = lv_list_add_btn(list1, LV_SYMBOL_DIRECTORY, entry.name());
+      //lv_obj_set_event_cb(list_btn, event_handler);
     }
     else
     {
@@ -472,20 +607,32 @@ void setup()
   /********************************************************************/
   lv_obj_t *tabview;
   tabview = lv_tabview_create(lv_scr_act(), NULL);
+  //lv_tabview_
   lv_tabview_set_anim_time(tabview, 0);
 
-  lv_obj_t *tab1 = lv_tabview_add_tab(tabview, "File");
-  lv_obj_t *tab2 = lv_tabview_add_tab(tabview, "Settings");
-  lv_obj_t *tab3 = lv_tabview_add_tab(tabview, "BOI");
+  tab1 = lv_tabview_add_tab(tabview, "File");
+  tab2 = lv_tabview_add_tab(tabview, "Settings");
+  tab3 = lv_tabview_add_tab(tabview, "BIOT");
 
   /*lv_obj_t * img1 = lv_img_create(tab3, NULL);
     lv_img_set_src(img1, &img_cogwheel_argb);
     lv_obj_align(img1, NULL, LV_ALIGN_CENTER, 0, -20);*/
 
-  lv_obj_t *img2 = lv_img_create(tab3, NULL);
-  lv_img_set_src(img2, LV_SYMBOL_USB " Accept");
+  //lv_obj_t *img2 = lv_img_create(tab3, NULL);
+  //lv_img_set_src(img2, LV_SYMBOL_USB " Accept");
   //lv_img_set_src(img2, LV_SYMBOL_VIDEO);
-  lv_obj_align(img2, tab3, LV_ALIGN_CENTER, 0, 0);
+
+  /*Create a text area. The keyboard will write here*/
+    ta  = lv_textarea_create(tab3, NULL);
+    lv_obj_set_size(ta,220,100);
+    lv_obj_align(ta, tab3, LV_ALIGN_IN_TOP_MID, 0, LV_DPI / 16);
+    lv_obj_set_event_cb(ta, ta_event_cb);
+    lv_textarea_set_text(ta, "");
+    lv_coord_t max_h = LV_VER_RES / 2 - LV_DPI / 8;
+    if(lv_obj_get_height(ta) > max_h) lv_obj_set_height(ta, max_h);
+
+    kb_create();
+  //lv_obj_align(img2, tab3, LV_ALIGN_CENTER, 0, 0);
 
   //lv_obj_align(img2, img1, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
 
@@ -562,8 +709,9 @@ void setup()
   //lv_obj_align(sw2, NULL, LV_ALIGN_IN_BOTTOM_MID, 55, -30);
 
   list1 = lv_list_create(tab1, NULL);
-  lv_obj_set_size(list1, 216, 240);
-  lv_obj_align(list1, NULL, LV_ALIGN_CENTER, 0, 0);
+  //lv_obj_set_size(list1, 216, 240);
+  lv_obj_set_size(list1, 216, 40);
+  lv_obj_align(list1, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -10);
   lv_list_set_anim_time(list1, 0);
   lv_list_set_scrollbar_mode(list1, LV_SCROLLBAR_MODE_AUTO);
   //root = SD.open("/");
@@ -579,6 +727,8 @@ void setup()
   lv_group_add_obj(group, slider2);
   lv_group_add_obj(group, slider3);
   lv_group_add_obj(group, sw1);
+  lv_group_add_obj(group, ta);
+  lv_group_add_obj(group, kb);
   //lv_group_add_obj(group, sw2);
   lv_group_add_obj(group, list1);
 

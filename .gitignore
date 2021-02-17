@@ -8,3 +8,4 @@ src/ESP32-OTA.h
 src/ESP32-OTA.cpp
 src/main.cpp
 platformio.ini
+src/ESP32_OTA.h
