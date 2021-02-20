@@ -7,11 +7,12 @@ void initOTA() {
   Serial.println("Booting");
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+  
+  /*while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Connection Failed! Rebooting...");
     delay(5000);
     ESP.restart();
-  }
+  }*/
  
   // Port defaults to 8266
   // ArduinoOTA.setPort(8266);

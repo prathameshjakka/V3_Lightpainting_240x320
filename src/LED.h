@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 #include <ESP32_OTA.h>
+#include <ESP32_SD_Update.h>
 
 #include <lvgl.h>
 #include <TFT_eSPI.h>

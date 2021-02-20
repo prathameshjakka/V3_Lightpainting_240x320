@@ -128,7 +128,7 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
 
     //bmpDraw(buff);
     
-    drawBmp(buff, 48, 50);
+    drawBmp(buff, 48, 10);
     //bmpDraw(buff);
     Serial.println("Print_Success");
     Serial.println(buff);
@@ -526,12 +526,28 @@ void setup()
   //digitalWrite( 5, HIGH); // SD card chips select, must use GPIO 5 (ESP32 SS)
 
   initOTA();
+  tft.begin();        /* TFT init */
+
 
   if (!SD.begin(5))
   {
     Serial.println("initialization failed!");
     while (1);
   }
+   uint8_t cardType;
+   cardType = SD.cardType();
+
+   if (cardType == CARD_NONE) {
+      rebootEspWithReason("No SD_MMC card attached");
+   }else{
+      tft.print("\n\n\n\n\n\n\n\n\t\t\t");
+      tft.setRotation(2); /* Landscape orientation */
+      tft.setTextSize(3);
+      tft.print("Updating\nFirmware"); 
+      updateFromFS(SD);
+  }
+
+
 
   Serial.println("SD CARD initialization done.");
   pcf8574.pinMode(P0, INPUT_PULLUP);
@@ -546,6 +562,7 @@ void setup()
   pcf8574.begin();
 
   lv_init();
+
 
     FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
     FastLED.setBrightness(BRIGHTNESS);
@@ -581,9 +598,12 @@ void setup()
   lv_log_register_print_cb(my_print); /* register print function for debugging */
 #endif
 
-  tft.begin();        /* TFT init */
-  tft.setRotation(2); /* Landscape orientation */
 
+  tft.setRotation(2); /* Landscape orientation */
+  tft.setTextSize(2);
+  tft.print("\n\n\n\n\n\n\n\n\n\n\n\n\t\t\t");
+  tft.print(WiFi.localIP());
+  delay(1000);
   lv_disp_buf_init(&disp_buf, buf, NULL, LV_HOR_RES_MAX * 10);
 
   /*Initialize the display*/
@@ -594,6 +614,8 @@ void setup()
   disp_drv.flush_cb = my_disp_flush;
   disp_drv.buffer = &disp_buf;
   lv_disp_drv_register(&disp_drv);
+
+
 
   /*Register a keypad input device*/
   lv_indev_drv_t indev_drv;
@@ -606,13 +628,13 @@ void setup()
 
   /********************************************************************/
   lv_obj_t *tabview;
-  tabview = lv_tabview_create(lv_scr_act(), NULL);
+  tabview = lv_tabview_create(NULL, NULL);
   //lv_tabview_
   lv_tabview_set_anim_time(tabview, 0);
 
   tab1 = lv_tabview_add_tab(tabview, "File");
   tab2 = lv_tabview_add_tab(tabview, "Settings");
-  tab3 = lv_tabview_add_tab(tabview, "BIOT");
+  tab3 = lv_tabview_add_tab(tabview, "NN");
 
   /*lv_obj_t * img1 = lv_img_create(tab3, NULL);
     lv_img_set_src(img1, &img_cogwheel_argb);
@@ -621,6 +643,13 @@ void setup()
   //lv_obj_t *img2 = lv_img_create(tab3, NULL);
   //lv_img_set_src(img2, LV_SYMBOL_USB " Accept");
   //lv_img_set_src(img2, LV_SYMBOL_VIDEO);
+  //IPAddress ip; 
+  //char ip = WiFi.localIP().toString().c_str();
+   //String wifi_name = WiFi.localIP().toString();
+   //lv_obj_t *label0 = lv_label_create(tab1, NULL);
+    //lv_label_set_text(label0, wifi_name);
+    //lv_label_set_text_fmt(label0,"%c",ip);
+    //lv_obj_align(label0, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
 
   /*Create a text area. The keyboard will write here*/
     ta  = lv_textarea_create(tab3, NULL);
@@ -640,7 +669,7 @@ void setup()
     lv_label_set_text(label, "Second tab");*/
 
   /* Create a slider in the center of the display */
-  lv_obj_t *slider = lv_slider_create(tab2, NULL);
+  lv_obj_t *slider = lv_slider_create(lv_scr_act(), NULL);
   lv_obj_set_width(slider, 180);
   lv_obj_align(slider, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 33);
   lv_obj_set_event_cb(slider, slider_event_cb_brightness);
@@ -648,7 +677,7 @@ void setup()
   lv_slider_set_value(slider, 20, LV_ANIM_ON);
 
   /* Create a slider in the center of the display */
-  lv_obj_t *slider2 = lv_slider_create(tab2, NULL);
+  lv_obj_t *slider2 = lv_slider_create(lv_scr_act(), NULL);
   lv_obj_set_width(slider2, 180);
   lv_obj_align(slider2, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 77);
   lv_obj_set_event_cb(slider2, slider_event_cb_speed);
@@ -656,61 +685,61 @@ void setup()
   lv_slider_set_value(slider2, 5, LV_ANIM_ON);
 
   /* Create a slider in the center of the display */
-  lv_obj_t *slider3 = lv_slider_create(tab2, NULL);
+  lv_obj_t *slider3 = lv_slider_create(lv_scr_act(), NULL);
   lv_obj_set_width(slider3, 180);
   lv_obj_align(slider3, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 121);
   lv_obj_set_event_cb(slider3, slider_event_cb_delay);
   lv_slider_set_range(slider3, 0, 10);
   lv_slider_set_value(slider3, 0, LV_ANIM_ON);
 
-  lv_obj_t *label = lv_label_create(tab2, NULL);
+  lv_obj_t *label = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(label, "Brightness  : ");
   lv_obj_set_pos(label, 20, 5);
 
-  lv_obj_t *label2 = lv_label_create(tab2, NULL);
+  lv_obj_t *label2 = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(label2, "Speed  : ");
   lv_obj_set_pos(label2, 20, 49);
 
-  lv_obj_t *label3 = lv_label_create(tab2, NULL);
+  lv_obj_t *label3 = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(label3, "Delay  : ");
   lv_obj_set_pos(label3, 20, 93);
 
-  lv_obj_t *label4 = lv_label_create(tab2, NULL);
+  lv_obj_t *label4 = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(label4, "Direction  : ");
   lv_obj_set_pos(label4, 20, 148);
 
-  label5 = lv_label_create(tab2, NULL);
+  label5 = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(label5, "LEFT");
   lv_obj_set_pos(label5, 177, 148);
 
   /* Create a label below the slider */
-  brightness_label = lv_label_create(tab2, NULL);
+  brightness_label = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(brightness_label, "20 %");
   lv_obj_set_auto_realign(brightness_label, true);
   lv_obj_align(brightness_label, label, LV_ALIGN_OUT_RIGHT_MID, 0, 0);
 
   /* Create a label below the slider */
-  speed_label = lv_label_create(tab2, NULL);
+  speed_label = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(speed_label, "5 ms");
   lv_obj_set_auto_realign(speed_label, true);
   lv_obj_align(speed_label, label2, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
 
-  delay_label = lv_label_create(tab2, NULL);
+  delay_label = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(delay_label, "0 s");
   lv_obj_set_auto_realign(delay_label, true);
   lv_obj_align(delay_label, label3, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
 
-  lv_obj_t *sw1 = lv_switch_create(tab2, NULL);
+  lv_obj_t *sw1 = lv_switch_create(lv_scr_act(), NULL);
   lv_obj_set_pos(sw1, 115, 144);
   lv_obj_set_event_cb(sw1, event_cb_direction);
   //lv_obj_align(sw1, NULL, LV_ALIGN_IN_BOTTOM_RIGHT, -100, 0);
 
-  //lv_obj_t *sw2 = lv_switch_create(tab2, NULL);
+  //lv_obj_t *sw2 = lv_switch_create(lv_scr_act(), NULL);
   //lv_obj_align(sw2, NULL, LV_ALIGN_IN_BOTTOM_MID, 55, -30);
 
-  list1 = lv_list_create(tab1, NULL);
+  list1 = lv_list_create(lv_scr_act(), NULL);
   //lv_obj_set_size(list1, 216, 240);
-  lv_obj_set_size(list1, 216, 40);
+  lv_obj_set_size(list1, 216, 75);
   lv_obj_align(list1, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -10);
   lv_list_set_anim_time(list1, 0);
   lv_list_set_scrollbar_mode(list1, LV_SCROLLBAR_MODE_AUTO);
@@ -721,14 +750,14 @@ void setup()
 
   /*Add buttons to the list*/
 
-  lv_group_add_obj(group, tabview);
+  //lv_group_add_obj(group, tabview);
 
   lv_group_add_obj(group, slider);
   lv_group_add_obj(group, slider2);
   lv_group_add_obj(group, slider3);
   lv_group_add_obj(group, sw1);
-  lv_group_add_obj(group, ta);
-  lv_group_add_obj(group, kb);
+  //lv_group_add_obj(group, ta);
+  //lv_group_add_obj(group, kb);
   //lv_group_add_obj(group, sw2);
   lv_group_add_obj(group, list1);
 
