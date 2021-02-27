@@ -1,4 +1,4 @@
-#include<LED.h>
+#include <LED.h>
 
 uint8_t bmpDepth, bmpImageoffset;
 
@@ -13,9 +13,11 @@ unsigned int Color(byte b, byte r, byte g); //placed here to avoid compiler erro
 #define NUM_LEDS 144
 bool blynk = false;
 
-CRGB leds[NUM_LEDS];
+#define offset_value 30
+//CRGB leds[NUM_LEDS];
+CRGBArray<NUM_LEDS> leds;
 
-int BRIGHTNESS = 20;
+int BRIGHTNESS = 255;
 
 void drawBmp(const char *filename, int16_t x, int16_t y);
 
@@ -38,11 +40,15 @@ lv_obj_t *label5;
 
 lv_obj_t *tab1, *tab2, *tab3;
 
-static lv_obj_t * kb;
-static lv_obj_t * ta;
+lv_obj_t *cpicker;
+
+static lv_obj_t *kb;
+static lv_obj_t *ta;
 
 lv_indev_t *indev_keypad;
 lv_group_t *group;
+
+lv_obj_t *scr2 = lv_obj_create(NULL, NULL);
 
 PCF8574 pcf8574(0x38);
 //PCF8574 pcf8574(0x20);
@@ -63,47 +69,81 @@ void my_print(lv_log_level_t level, const char *file, uint32_t line, const char 
 // May need to reverse subscript order if porting elsewhere.
 uint16_t read16(File &f)
 {
-    uint16_t result;
-    ((uint8_t *)&result)[0] = f.read(); // LSB
-    ((uint8_t *)&result)[1] = f.read(); // MSB
-    return result;
+  uint16_t result;
+  ((uint8_t *)&result)[0] = f.read(); // LSB
+  ((uint8_t *)&result)[1] = f.read(); // MSB
+  return result;
 }
 uint32_t read32(File &f)
 {
-    uint32_t result;
-    ((uint8_t *)&result)[0] = f.read(); // LSB
-    ((uint8_t *)&result)[1] = f.read();
-    ((uint8_t *)&result)[2] = f.read();
-    ((uint8_t *)&result)[3] = f.read(); // MSB
-    return result;
+  uint32_t result;
+  ((uint8_t *)&result)[0] = f.read(); // LSB
+  ((uint8_t *)&result)[1] = f.read();
+  ((uint8_t *)&result)[2] = f.read();
+  ((uint8_t *)&result)[3] = f.read(); // MSB
+  return result;
 }
 
-static void kb_event_cb(lv_obj_t * keyboard, lv_event_t e)
+static void kb_event_cb(lv_obj_t *keyboard, lv_event_t e)
 {
-    lv_keyboard_def_event_cb(kb, e);
-    if(e == LV_EVENT_CANCEL) {
-        lv_keyboard_set_textarea(kb, NULL);
-        lv_obj_del(kb);
-        kb = NULL;
-    }
+  lv_keyboard_def_event_cb(kb, e);
+  if (e == LV_EVENT_CANCEL)
+  {
+    lv_keyboard_set_textarea(kb, NULL);
+    lv_obj_del(kb);
+    kb = NULL;
+  }
 }
 
 static void kb_create(void)
 {
-    kb = lv_keyboard_create(tab3, NULL);
-    lv_obj_set_size(kb,200,100);
-    lv_obj_align(kb,ta,LV_ALIGN_OUT_BOTTOM_MID,0,0);
-    lv_keyboard_set_cursor_manage(kb, true);
-    lv_obj_set_event_cb(kb, kb_event_cb);
-    lv_keyboard_set_textarea(kb, ta);
-
+  kb = lv_keyboard_create(tab3, NULL);
+  lv_obj_set_size(kb, 200, 100);
+  lv_obj_align(kb, ta, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
+  lv_keyboard_set_cursor_manage(kb, true);
+  lv_obj_set_event_cb(kb, kb_event_cb);
+  lv_keyboard_set_textarea(kb, ta);
 }
 
-static void ta_event_cb(lv_obj_t * ta_local, lv_event_t e)
+static void ta_event_cb(lv_obj_t *ta_local, lv_event_t e)
 {
-    if(e == LV_EVENT_CLICKED && kb == NULL) {
-        kb_create();
+  if (e == LV_EVENT_CLICKED && kb == NULL)
+  {
+    kb_create();
+  }
+}
+
+static void event_handler_cpicker(lv_obj_t *obj, lv_event_t event)
+{
+  if (event == LV_EVENT_VALUE_CHANGED)
+  {
+    
+    //FastLED.setBrightness(BRIGHTNESS);
+    //static uint8_t hue;
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+      // fade everything out
+      //leds.fadeToBlackBy(40);
+
+      // let's set an led value
+      leds[i] = CHSV(lv_cpicker_get_hue(cpicker), 255, (lv_cpicker_get_value(cpicker)*2.55));
+      
+      // now, let's first 20 leds to the top 20 leds,
+      //leds(NUM_LEDS / 2, NUM_LEDS - 1) = leds(NUM_LEDS / 2 - 1, 0);
+      //FastLED.delay(33);
     }
+    FastLED.show();
+    //set_black();
+  }
+}
+
+static void event_handler_settings(lv_obj_t *obj, lv_event_t event)
+{
+  if (event == LV_EVENT_CLICKED)
+  {
+
+    lv_scr_load(scr2);
+  }
 }
 
 static void event_handler(lv_obj_t *obj, lv_event_t event)
@@ -125,9 +165,8 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
     //Serial.println(g_dynParam_brightness);
     //camera_trigger();
 
-
     //bmpDraw(buff);
-    
+
     drawBmp(buff, 48, 10);
     //bmpDraw(buff);
     Serial.println("Print_Success");
@@ -152,9 +191,8 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
     //Serial.println(g_dynParam_brightness);
     //camera_trigger();
 
-
     //bmpDraw(buff);
-    
+
     //drawBmp(buff, 48, 50);
     bmpDraw(buff);
     Serial.println("Print_Success");
@@ -255,202 +293,200 @@ static void event_cb_direction(lv_obj_t *obj, lv_event_t event)
   }
 }
 
-
 void drawBmp(const char *filename, int16_t x, int16_t y)
 {
 
-    if ((x >= tft.width()) || (y >= tft.height()))
-        return;
+  if ((x >= tft.width()) || (y >= tft.height()))
+    return;
 
-    File bmpFS;
+  File bmpFS;
 
-    // Open requested file on SD card
-    bmpFS = SD.open(filename);
+  // Open requested file on SD card
+  bmpFS = SD.open(filename);
 
-    if (!bmpFS)
+  if (!bmpFS)
+  {
+    Serial.print("File not found");
+    return;
+  }
+
+  uint32_t seekOffset;
+  uint16_t w, h, row, col;
+  uint8_t r, g, b;
+
+  uint32_t startTime = millis();
+
+  if (read16(bmpFS) == 0x4D42)
+  {
+    read32(bmpFS);
+    read32(bmpFS);
+    seekOffset = read32(bmpFS);
+    read32(bmpFS);
+    w = read32(bmpFS);
+    h = read32(bmpFS);
+
+    if ((read16(bmpFS) == 1) && (read16(bmpFS) == 24) && (read32(bmpFS) == 0))
     {
-        Serial.print("File not found");
-        return;
-    }
+      y += h - 1;
 
-    uint32_t seekOffset;
-    uint16_t w, h, row, col;
-    uint8_t r, g, b;
+      tft.setSwapBytes(true);
+      bmpFS.seek(seekOffset);
 
-    uint32_t startTime = millis();
+      uint16_t padding = (4 - ((w * 3) & 3)) & 3;
+      uint8_t lineBuffer[w * 3];
 
-    if (read16(bmpFS) == 0x4D42)
-    {
-        read32(bmpFS);
-        read32(bmpFS);
-        seekOffset = read32(bmpFS);
-        read32(bmpFS);
-        w = read32(bmpFS);
-        h = read32(bmpFS);
-
-        if ((read16(bmpFS) == 1) && (read16(bmpFS) == 24) && (read32(bmpFS) == 0))
+      for (row = 0; row < h; row++)
+      {
+        bmpFS.read(lineBuffer, sizeof(lineBuffer));
+        uint8_t *bptr = lineBuffer;
+        uint16_t *tptr = (uint16_t *)lineBuffer;
+        // Convert 24 to 16 bit colours
+        for (uint16_t col = 0; col < w; col++)
         {
-            y += h - 1;
-
-            tft.setSwapBytes(true);
-            bmpFS.seek(seekOffset);
-
-            uint16_t padding = (4 - ((w * 3) & 3)) & 3;
-            uint8_t lineBuffer[w * 3];
-
-            for (row = 0; row < h; row++)
-            {
-                bmpFS.read(lineBuffer, sizeof(lineBuffer));
-                uint8_t *bptr = lineBuffer;
-                uint16_t *tptr = (uint16_t *)lineBuffer;
-                // Convert 24 to 16 bit colours
-                for (uint16_t col = 0; col < w; col++)
-                {
-                    b = *bptr++;
-                    g = *bptr++;
-                    r = *bptr++;
-                    *tptr++ = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-                }
-                // Read any line padding
-                if (padding)
-                    bmpFS.read((uint8_t *)tptr, padding);
-                // Push the pixel row to screen, pushImage will crop the line if needed
-                tft.pushImage(x, y--, w, 1, (uint16_t *)lineBuffer);
-                //Serial.println(y);
-            }
-            Serial.print("Loaded in ");
-            Serial.print(millis() - startTime);
-            Serial.println(" ms");
+          b = *bptr++;
+          g = *bptr++;
+          r = *bptr++;
+          *tptr++ = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
         }
-        else
-            Serial.println("BMP format not recognized.");
+        // Read any line padding
+        if (padding)
+          bmpFS.read((uint8_t *)tptr, padding);
+        // Push the pixel row to screen, pushImage will crop the line if needed
+        tft.pushImage(x, y--, w, 1, (uint16_t *)lineBuffer);
+        //Serial.println(y);
+      }
+      Serial.print("Loaded in ");
+      Serial.print(millis() - startTime);
+      Serial.println(" ms");
     }
-    bmpFS.close();
+    else
+      Serial.println("BMP format not recognized.");
+  }
+  bmpFS.close();
 }
 
 //////////////////Function to read BMP and send to Led strip a row at a time/////////////////////
 void bmpDraw(char *filename)
 {
 
-    File bmpFile;
-    int bmpWidth, bmpHeight;             // W+H in pixels
-    uint8_t bmpDepth;                    // Bit depth (currently must report 24)
-    uint32_t bmpImageoffset;             // Start of image data in file
-    uint32_t rowSize;                    // Not always = bmpWidth; may have padding
-    uint8_t sdbuffer[3 * BUFFPIXEL];     // pixel in buffer (R+G+B per pixel)
-    uint32_t povbuffer[BUFFPIXEL];       // pixel out buffer (16-bit per pixel)//////mg/////this needs to be 24bit per pixel////////
-    uint32_t buffidx = sizeof(sdbuffer); // Current position in sdbuffer
-    boolean goodBmp = false;             // Set to true on valid header parse
-                   // BMP is stored bottom-to-top
-    int w, h, row, col;
-    int r, g, b;
-    uint32_t pos = 0, startTime = millis();
-    uint16_t povidx = 0;
-    boolean first = true;
-    int delay_image_scroll;
-    //boolean flip = flipraw;
-    boolean flip = 1;  
-    Serial.print("FLIP : ");
-    Serial.println(flip);
-    // Open requested file on SD card
-    bmpFile = SD.open(filename);
-    Serial.println(filename);
-    // Parse BMP header
-    if (read16(bmpFile) == 0x4D42)
-    { // BMP signature
-        Serial.print("File size: ");
-        Serial.println(read32(bmpFile));
-        (void)read32(bmpFile);            // Read & ignore creator bytes
-        bmpImageoffset = read32(bmpFile); // Start of image data
-        Serial.print("Image Offset: ");
-        Serial.println(bmpImageoffset, DEC);
-        // Read DIB header
-        Serial.print("Header size: ");
-        Serial.println(read32(bmpFile));
-        bmpWidth = read32(bmpFile);
-        bmpHeight = read32(bmpFile);
-        if (read16(bmpFile) == 1)
-        {                               // # planes -- must be '1'
-            bmpDepth = read16(bmpFile); // bits per pixel
-            Serial.print("Bit Depth: ");
-            Serial.println(bmpDepth);
-            if ((bmpDepth == 24) && (read32(bmpFile) == 0))
-            { // 0 = uncompressed
+  File bmpFile;
+  int bmpWidth, bmpHeight;             // W+H in pixels
+  uint8_t bmpDepth;                    // Bit depth (currently must report 24)
+  uint32_t bmpImageoffset;             // Start of image data in file
+  uint32_t rowSize;                    // Not always = bmpWidth; may have padding
+  uint8_t sdbuffer[3 * BUFFPIXEL];     // pixel in buffer (R+G+B per pixel)
+  uint32_t povbuffer[BUFFPIXEL];       // pixel out buffer (16-bit per pixel)//////mg/////this needs to be 24bit per pixel////////
+  uint32_t buffidx = sizeof(sdbuffer); // Current position in sdbuffer
+  boolean goodBmp = false;             // Set to true on valid header parse
+                                       // BMP is stored bottom-to-top
+  int w, h, row, col;
+  int r, g, b;
+  uint32_t pos = 0, startTime = millis();
+  uint16_t povidx = 0;
+  boolean first = true;
+  int delay_image_scroll;
+  //boolean flip = flipraw;
+  boolean flip = 1;
+  Serial.print("FLIP : ");
+  Serial.println(flip);
+  // Open requested file on SD card
+  bmpFile = SD.open(filename);
+  Serial.println(filename);
+  // Parse BMP header
+  if (read16(bmpFile) == 0x4D42)
+  { // BMP signature
+    Serial.print("File size: ");
+    Serial.println(read32(bmpFile));
+    (void)read32(bmpFile);            // Read & ignore creator bytes
+    bmpImageoffset = read32(bmpFile); // Start of image data
+    Serial.print("Image Offset: ");
+    Serial.println(bmpImageoffset, DEC);
+    // Read DIB header
+    Serial.print("Header size: ");
+    Serial.println(read32(bmpFile));
+    bmpWidth = read32(bmpFile);
+    bmpHeight = read32(bmpFile);
+    if (read16(bmpFile) == 1)
+    {                             // # planes -- must be '1'
+      bmpDepth = read16(bmpFile); // bits per pixel
+      Serial.print("Bit Depth: ");
+      Serial.println(bmpDepth);
+      if ((bmpDepth == 24) && (read32(bmpFile) == 0))
+      { // 0 = uncompressed
 
-                goodBmp = true; // Supported BMP format -- proceed!
-                Serial.print("Image size: ");
-                Serial.print(bmpWidth);
-                Serial.print('x');
-                Serial.println(bmpHeight);
+        goodBmp = true; // Supported BMP format -- proceed!
+        Serial.print("Image size: ");
+        Serial.print(bmpWidth);
+        Serial.print('x');
+        Serial.println(bmpHeight);
 
-                // BMP rows are padded (if needed) to 4-byte boundary
-                rowSize = (bmpWidth * 3 + 3) & ~3;
+        // BMP rows are padded (if needed) to 4-byte boundary
+        rowSize = (bmpWidth * 3 + 3) & ~3;
 
-                // If bmpHeight is negative, image is in top-down order.
-                // This is not canon but has been observed in the wild.
-                if (bmpHeight < 0)
-                {
-                    bmpHeight = -bmpHeight;
-                    flip = false;
-                }
-
-                w = bmpWidth;
-                h = bmpHeight;
-
-                for (row = 0; row < h; row++)
-                {
-                    //fex.drawProgressBar(0,225,240,15,map(row,0,bmpHeight,0,101),TFT_WHITE,TFT_GREEN);
-                    //tft.drawRect(0,220,map(row,0,bmpHeight,0,240),20,TFT_WHITE);
-                    if (flip) // Bitmap is stored bottom-to-top order (normal BMP)
-                        pos = bmpImageoffset + (bmpHeight - 1 - row) * rowSize;
-                    else // Bitmap is stored top-to-bottom
-                        pos = bmpImageoffset + row * rowSize;
-                    if (bmpFile.position() != pos)
-                    { // Need seek?
-                        bmpFile.seek(pos);
-                        buffidx = sizeof(sdbuffer); // Force buffer reload
-                    }
-
-                    for (col = 0; col < w; col++)
-                    { // For each column...
-                        // read more pixel data
-                        if (buffidx >= sizeof(sdbuffer))
-                        {
-                            povidx = 0;
-                            bmpFile.read(sdbuffer, sizeof(sdbuffer));
-                            buffidx = 0; // Set index to beginning
-                        }
-                        // set pixel
-                        r = sdbuffer[buffidx++];
-                        g = sdbuffer[buffidx++];
-                        b = sdbuffer[buffidx++];
-                        //Serial.print(r);Serial.print(" ");Serial.print(g);Serial.print(" ");Serial.println(b);
-                        //we need to output GRB 24bit colour//
-                        //povbuffer[povidx++] =(g<<16) + (r<<8) +b; //original code is b r g, should be g r b?
-                        povbuffer[povidx++] = (b << 16) + (g << 8) + r; //original code is b r g, should be g r b?
-                                                                        //povbuffer[povidx++] = Color_hex (r,g,b);
-                                                                        //Serial.print(povbuffer[povidx++]);
-                    }
-
-                    for (int x = 0; x < NUM_LEDS; x++)
-                    {
-                        leds[x] = povbuffer[x];
-                    }
-                    FastLED.show();
-                    delay_image_scroll = 5 ;
-                    //Serial.print (delay_image_scroll);
-                    delay(delay_image_scroll); // change the delay time depending effect required
-                }                              // end scanline
-
-            } // end goodBmp
+        // If bmpHeight is negative, image is in top-down order.
+        // This is not canon but has been observed in the wild.
+        if (bmpHeight < 0)
+        {
+          bmpHeight = -bmpHeight;
+          flip = false;
         }
-    } //end of IF BMP
-    //Serial.println();
 
-    bmpFile.close();
-    set_black();
+        w = bmpWidth;
+        h = bmpHeight;
+
+        for (row = 0; row < h; row++)
+        {
+          //fex.drawProgressBar(0,225,240,15,map(row,0,bmpHeight,0,101),TFT_WHITE,TFT_GREEN);
+          //tft.drawRect(0,220,map(row,0,bmpHeight,0,240),20,TFT_WHITE);
+          if (flip) // Bitmap is stored bottom-to-top order (normal BMP)
+            pos = bmpImageoffset + (bmpHeight - 1 - row) * rowSize;
+          else // Bitmap is stored top-to-bottom
+            pos = bmpImageoffset + row * rowSize;
+          if (bmpFile.position() != pos)
+          { // Need seek?
+            bmpFile.seek(pos);
+            buffidx = sizeof(sdbuffer); // Force buffer reload
+          }
+
+          for (col = 0; col < w; col++)
+          { // For each column...
+            // read more pixel data
+            if (buffidx >= sizeof(sdbuffer))
+            {
+              povidx = 0;
+              bmpFile.read(sdbuffer, sizeof(sdbuffer));
+              buffidx = 0; // Set index to beginning
+            }
+            // set pixel
+            r = sdbuffer[buffidx++];
+            g = sdbuffer[buffidx++];
+            b = sdbuffer[buffidx++];
+            //Serial.print(r);Serial.print(" ");Serial.print(g);Serial.print(" ");Serial.println(b);
+            //we need to output GRB 24bit colour//
+            //povbuffer[povidx++] =(g<<16) + (r<<8) +b; //original code is b r g, should be g r b?
+            povbuffer[povidx++] = (b << 16) + (g << 8) + r; //original code is b r g, should be g r b?
+                                                            //povbuffer[povidx++] = Color_hex (r,g,b);
+                                                            //Serial.print(povbuffer[povidx++]);
+          }
+
+          for (int x = 0; x < NUM_LEDS; x++)
+          {
+            leds[x] = povbuffer[x];
+          }
+          FastLED.show();
+          delay_image_scroll = 5;
+          //Serial.print (delay_image_scroll);
+          delay(delay_image_scroll); // change the delay time depending effect required
+        }                            // end scanline
+
+      } // end goodBmp
+    }
+  } //end of IF BMP
+  //Serial.println();
+
+  bmpFile.close();
+  set_black();
 }
-
 
 /* Display flushing */
 void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
@@ -526,28 +562,29 @@ void setup()
   //digitalWrite( 5, HIGH); // SD card chips select, must use GPIO 5 (ESP32 SS)
 
   initOTA();
-  tft.begin();        /* TFT init */
-
+  tft.begin(); /* TFT init */
 
   if (!SD.begin(5))
   {
     Serial.println("initialization failed!");
-    while (1);
+    while (1)
+      ;
   }
-   uint8_t cardType;
-   cardType = SD.cardType();
+  uint8_t cardType;
+  cardType = SD.cardType();
 
-   if (cardType == CARD_NONE) {
-      rebootEspWithReason("No SD_MMC card attached");
-   }else{
-      tft.print("\n\n\n\n\n\n\n\n\t\t\t");
-      tft.setRotation(2); /* Landscape orientation */
-      tft.setTextSize(3);
-      tft.print("Updating\nFirmware"); 
-      updateFromFS(SD);
+  if (cardType == CARD_NONE)
+  {
+    rebootEspWithReason("No SD_MMC card attached");
   }
-
-
+  else
+  {
+    tft.print("\n\n\n\n\n\n\n\n\t\t\t");
+    tft.setRotation(2); /* Landscape orientation */
+    tft.setTextSize(3);
+    tft.print("Updating\nFirmware");
+    updateFromFS(SD);
+  }
 
   Serial.println("SD CARD initialization done.");
   pcf8574.pinMode(P0, INPUT_PULLUP);
@@ -563,41 +600,49 @@ void setup()
 
   lv_init();
 
-
-    FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
-    FastLED.setBrightness(BRIGHTNESS);
-    Serial.print("Setup Brightness : ");
-    Serial.println(BRIGHTNESS);
-    for (int x = 0; x < NUM_LEDS; x++)
-    {
-        leds[x] = CRGB::Green;
-    }
-    FastLED.show();
-    delay(300);
-    for (int x = 0; x < NUM_LEDS; x++)
-    {
-        leds[x] = CRGB::Red;
-    }
-    FastLED.show();
-    delay(300);
-    for (int x = 0; x < NUM_LEDS; x++)
-    {
-        leds[x] = CRGB::Blue;
-    }
-    FastLED.show();
-    delay(300);
-    for (int x = 0; x < NUM_LEDS; x++)
-    {
-        leds[x] = CRGB::Black;
-    }
-    FastLED.show();
-    delay(10);
-    
+  FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+  FastLED.setBrightness(20);
+  Serial.print("Setup Brightness : ");
+  Serial.println(BRIGHTNESS);
+  for (int x = 0; x < NUM_LEDS; x++)
+  {
+    leds[x] = CRGB::Green;
+  }
+  FastLED.show();
+  delay(300);
+  for (int x = 0; x < NUM_LEDS; x++)
+  {
+    leds[x] = CRGB::Red;
+  }
+  FastLED.show();
+  delay(300);
+  for (int x = 0; x < NUM_LEDS; x++)
+  {
+    leds[x] = CRGB::Blue;
+  }
+  FastLED.show();
+  delay(300);
+  for (int x = 0; x < NUM_LEDS; x++)
+  {
+    leds[x] = CRGB::Black;
+  }
+  FastLED.show();
+  delay(10);
+ /* FastLED.setBrightness(255);
+  static uint8_t hue = 0;
+  for (int i = 1; i < NUM_LEDS; i++)
+  {
+    fill_solid(leds, NUM_LEDS, CHSV(hue++, 255, 30)); // light up whole strip
+    // leds[i] = CHSV(hue++, 255, 255);               // Set the i'th led to red
+    FastLED.show(); // Show the leds
+    delay(100);
+  }
+  set_black();
+*/
   //root = SD.open("/");
 #if USE_LV_LOG != 0
   lv_log_register_print_cb(my_print); /* register print function for debugging */
 #endif
-
 
   tft.setRotation(2); /* Landscape orientation */
   tft.setTextSize(2);
@@ -614,8 +659,6 @@ void setup()
   disp_drv.flush_cb = my_disp_flush;
   disp_drv.buffer = &disp_buf;
   lv_disp_drv_register(&disp_drv);
-
-
 
   /*Register a keypad input device*/
   lv_indev_drv_t indev_drv;
@@ -643,82 +686,84 @@ void setup()
   //lv_obj_t *img2 = lv_img_create(tab3, NULL);
   //lv_img_set_src(img2, LV_SYMBOL_USB " Accept");
   //lv_img_set_src(img2, LV_SYMBOL_VIDEO);
-  //IPAddress ip; 
+  //IPAddress ip;
   //char ip = WiFi.localIP().toString().c_str();
-   //String wifi_name = WiFi.localIP().toString();
-   //lv_obj_t *label0 = lv_label_create(tab1, NULL);
-    //lv_label_set_text(label0, wifi_name);
-    //lv_label_set_text_fmt(label0,"%c",ip);
-    //lv_obj_align(label0, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
+  //String wifi_name = WiFi.localIP().toString();
+  //lv_obj_t *label0 = lv_label_create(tab1, NULL);
+  //lv_label_set_text(label0, wifi_name);
+  //lv_label_set_text_fmt(label0,"%c",ip);
+  //lv_obj_align(label0, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
 
   /*Create a text area. The keyboard will write here*/
-    ta  = lv_textarea_create(tab3, NULL);
-    lv_obj_set_size(ta,220,100);
-    lv_obj_align(ta, tab3, LV_ALIGN_IN_TOP_MID, 0, LV_DPI / 16);
-    lv_obj_set_event_cb(ta, ta_event_cb);
-    lv_textarea_set_text(ta, "");
-    lv_coord_t max_h = LV_VER_RES / 2 - LV_DPI / 8;
-    if(lv_obj_get_height(ta) > max_h) lv_obj_set_height(ta, max_h);
+  ta = lv_textarea_create(tab3, NULL);
+  lv_obj_set_size(ta, 220, 100);
+  lv_obj_align(ta, tab3, LV_ALIGN_IN_TOP_MID, 0, LV_DPI / 16);
+  lv_obj_set_event_cb(ta, ta_event_cb);
+  lv_textarea_set_text(ta, "");
+  lv_coord_t max_h = LV_VER_RES / 2 - LV_DPI / 8;
+  if (lv_obj_get_height(ta) > max_h)
+    lv_obj_set_height(ta, max_h);
 
-    kb_create();
+  kb_create();
   //lv_obj_align(img2, tab3, LV_ALIGN_CENTER, 0, 0);
 
   //lv_obj_align(img2, img1, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
 
   /*lv_obj_t *label = lv_label_create(tab1, NULL);
     lv_label_set_text(label, "Second tab");*/
-
-  /* Create a slider in the center of the display */
+  /***********************************************************************************************************************************/
+  /*
+  // Create a slider in the center of the display 
   lv_obj_t *slider = lv_slider_create(lv_scr_act(), NULL);
   lv_obj_set_width(slider, 180);
-  lv_obj_align(slider, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 33);
+  lv_obj_align(slider, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 33+offset_value);
   lv_obj_set_event_cb(slider, slider_event_cb_brightness);
   lv_slider_set_range(slider, 0, 100);
   lv_slider_set_value(slider, 20, LV_ANIM_ON);
-
-  /* Create a slider in the center of the display */
+  
+  // Create a slider in the center of the display 
   lv_obj_t *slider2 = lv_slider_create(lv_scr_act(), NULL);
   lv_obj_set_width(slider2, 180);
-  lv_obj_align(slider2, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 77);
+  lv_obj_align(slider2, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 77+offset_value);
   lv_obj_set_event_cb(slider2, slider_event_cb_speed);
   lv_slider_set_range(slider2, 0, 100);
   lv_slider_set_value(slider2, 5, LV_ANIM_ON);
 
-  /* Create a slider in the center of the display */
+  // Create a slider in the center of the display 
   lv_obj_t *slider3 = lv_slider_create(lv_scr_act(), NULL);
   lv_obj_set_width(slider3, 180);
-  lv_obj_align(slider3, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 121);
+  lv_obj_align(slider3, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 121+offset_value);
   lv_obj_set_event_cb(slider3, slider_event_cb_delay);
   lv_slider_set_range(slider3, 0, 10);
   lv_slider_set_value(slider3, 0, LV_ANIM_ON);
 
   lv_obj_t *label = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(label, "Brightness  : ");
-  lv_obj_set_pos(label, 20, 5);
+  lv_obj_set_pos(label, 20, 5+offset_value);
 
   lv_obj_t *label2 = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(label2, "Speed  : ");
-  lv_obj_set_pos(label2, 20, 49);
+  lv_obj_set_pos(label2, 20, 49+offset_value);
 
   lv_obj_t *label3 = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(label3, "Delay  : ");
-  lv_obj_set_pos(label3, 20, 93);
+  lv_obj_set_pos(label3, 20, 93+offset_value);
 
   lv_obj_t *label4 = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(label4, "Direction  : ");
-  lv_obj_set_pos(label4, 20, 148);
+  lv_obj_set_pos(label4, 20, 148+offset_value);
 
   label5 = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(label5, "LEFT");
-  lv_obj_set_pos(label5, 177, 148);
+  lv_obj_set_pos(label5, 177, 148+offset_value);
 
-  /* Create a label below the slider */
+  // Create a label below the slider 
   brightness_label = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(brightness_label, "20 %");
   lv_obj_set_auto_realign(brightness_label, true);
   lv_obj_align(brightness_label, label, LV_ALIGN_OUT_RIGHT_MID, 0, 0);
 
-  /* Create a label below the slider */
+  // Create a label below the slider 
   speed_label = lv_label_create(lv_scr_act(), NULL);
   lv_label_set_text(speed_label, "5 ms");
   lv_obj_set_auto_realign(speed_label, true);
@@ -730,17 +775,41 @@ void setup()
   lv_obj_align(delay_label, label3, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
 
   lv_obj_t *sw1 = lv_switch_create(lv_scr_act(), NULL);
-  lv_obj_set_pos(sw1, 115, 144);
+  lv_obj_set_pos(sw1, 115, 144+offset_value);
   lv_obj_set_event_cb(sw1, event_cb_direction);
   //lv_obj_align(sw1, NULL, LV_ALIGN_IN_BOTTOM_RIGHT, -100, 0);
 
   //lv_obj_t *sw2 = lv_switch_create(lv_scr_act(), NULL);
   //lv_obj_align(sw2, NULL, LV_ALIGN_IN_BOTTOM_MID, 55, -30);
+  */
+  /*****************************************************************************************************************/
 
-  list1 = lv_list_create(lv_scr_act(), NULL);
-  //lv_obj_set_size(list1, 216, 240);
-  lv_obj_set_size(list1, 216, 75);
-  lv_obj_align(list1, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -10);
+  lv_obj_t *scr1 = lv_obj_create(NULL, NULL);
+
+  lv_obj_t *label;
+
+  lv_obj_t *btn1 = lv_btn_create(scr1, NULL);
+  lv_obj_set_event_cb(btn1, event_handler_settings);
+  lv_obj_set_size(btn1, 160, 25);
+  lv_obj_align(btn1, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -5);
+
+  label = lv_label_create(btn1, NULL);
+  lv_label_set_text(label, LV_SYMBOL_SETTINGS " Settings");
+
+  cpicker = lv_cpicker_create(scr1, NULL);
+
+  lv_obj_set_size(cpicker, 200, 200);
+  lv_obj_align(cpicker, NULL, LV_ALIGN_CENTER, 0, -40);
+  lv_obj_set_event_cb(cpicker, event_handler_cpicker);
+  FastLED.setBrightness(255);
+  //lv_cpicker_set_hue(cpicker, 1);
+  //lv_cpicker_set_saturation(cpicker, 100);
+  lv_cpicker_set_value(cpicker, 50);
+
+  list1 = lv_list_create(scr1, NULL);
+  //lv_obj_set_size(list1, 220, 60);
+  lv_obj_set_size(list1, 220, 50);
+  lv_obj_align(list1, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -35);
   lv_list_set_anim_time(list1, 0);
   lv_list_set_scrollbar_mode(list1, LV_SCROLLBAR_MODE_AUTO);
   //root = SD.open("/");
@@ -752,17 +821,19 @@ void setup()
 
   //lv_group_add_obj(group, tabview);
 
-  lv_group_add_obj(group, slider);
-  lv_group_add_obj(group, slider2);
-  lv_group_add_obj(group, slider3);
-  lv_group_add_obj(group, sw1);
+  //lv_group_add_obj(group, slider);
+  //lv_group_add_obj(group, slider2);
+  //lv_group_add_obj(group, slider3);
+  //lv_group_add_obj(group, sw1);
   //lv_group_add_obj(group, ta);
   //lv_group_add_obj(group, kb);
   //lv_group_add_obj(group, sw2);
+  lv_group_add_obj(group, cpicker);
   lv_group_add_obj(group, list1);
-
+  lv_group_add_obj(group, btn1);
+  lv_disp_load_scr(scr1);
   
-} 
+}
 
 void loop()
 {
@@ -782,11 +853,10 @@ void loop()
  * ===================================================================== *
  */
 
-
- 
-
-void set_black() {
-  for (int x = 0; x < NUM_LEDS; x++) {
+void set_black()
+{
+  for (int x = 0; x < NUM_LEDS; x++)
+  {
     leds[x] = CRGB::Black;
   }
   FastLED.show();
